@@ -66,15 +66,25 @@ ax.set_ylabel(r"$|\psi(x,t)|^2$")
 title = ax.set_title("")
 ax.legend(loc="upper right")
 
+<<<<<<< HEAD
 
+=======
+'''
+>>>>>>> 07a53e063359e18a3463e3cbc81f7d2c48b00bbc
 def animate(i):
     line.set_ydata(np.abs(data[i])**2)
     title.set_text(f"t = {i * dt:.2f}")
     return line, pot_line, title
 
+<<<<<<< HEAD
 timesteps
 
 ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
 
+=======
+
+ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
+'''
+>>>>>>> 07a53e063359e18a3463e3cbc81f7d2c48b00bbc
 
 plt.show()
