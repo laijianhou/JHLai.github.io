@@ -33,10 +33,10 @@ k = 2 * np.pi * (np.fft.fftfreq(N, d=dx))
 
 # Evolution operators
 def kinetic(dt):
-    return np.exp( (hbar * k**2 * dt) / (2 * m))
+    return np.exp(1j*(hbar * k**2 * dt) / (2 * m))
 
 def nonlinear(psi_x, dt):
-    return np.exp((dt / hbar) * (V_x + g * np.abs(psi_x)**2))
+    return np.exp(-1j*(dt / hbar) * (V_x + g * np.abs(psi_x)**2))
 
 # Time evolution step using Split-Step Fourier method
 def evolve(psi_x, dt):
@@ -58,9 +58,11 @@ for i in range(timesteps):
     psi_x = evolve(psi_x, dt)
     data.append(psi_x.copy())
 
-# Animation
+
+
+# Plot
 fig, ax = plt.subplots()
-line, = ax.plot(x, np.abs(data[0])**2)
+line, = ax.plot(x, np.abs(data[40])**2)
 ax.set_ylim(0, 1)
 ax.set_xlim(x[0], x[-1])
 ax.set_xlabel("x")
@@ -68,12 +70,10 @@ ax.set_ylabel(r"$|\psi(x,t)|^2$")
 title = ax.set_title("")
 
 
+plt.plot( x, V_x,linestyle=':')
 
 
-plt.plot(x,  np.abs(data[0])**2, x, V_x,linestyle=':')
+# ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
 
-'''
-ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
-'''
 
 plt.show()
