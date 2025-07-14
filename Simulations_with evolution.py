@@ -72,6 +72,7 @@ def animate(i):
     title.set_text(f"t = {i * dt:.2f}")
     return line, pot_line, title
 
+timesteps
 
 ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
 
