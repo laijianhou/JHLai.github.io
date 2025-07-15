@@ -9,26 +9,25 @@ m = 1.0
 omega = 1.0
 
 #Spatial grid and harmonic oscillator potential
-N_points = 500
+N_points = 5000
 x_min, x_max = -7.0, 7.0
 x = np.linspace(x_min, x_max, N_points)
 dx = x[1] - x[0]
 V = 0.5 * m * omega**2 * x**2
 
-'''need to check this (2)'''
-#Finite-difference Hamiltonian
-main_diag = np.full(N_points, -2.0)
-off_diag = np.full(N_points - 1, 1.0)
-kinetic = -(hbar**2) / (2*m*dx**2) * (np.diag(main_diag) + np.diag(off_diag, 1) + np.diag(off_diag, -1))
+#Finite-difference method for Hamiltonian matrix
+main_diag = np.full(N_points, -2.0) #Form the 1D array for diagonal elements
+off_diag = np.full(N_points - 1, 1.0) #Form the 1D array for off-diagonal elements
+kinetic = -(hbar**2) / (2*m*dx**2) * (np.diag(main_diag) + np.diag(off_diag, 1) + np.diag(off_diag, -1))  #np.diag is converting 1D arrays to 2D matrices, by placing elemnts on diagonal or off-diagonal
 potential = np.diag(V)
 H = kinetic + potential
 
-#Guessed initial wave function (gaussian)
+#Guessed initial wave function (gaussian) (need to overlap with the initial state)
 sigma = 2.0
-k = 5.0  # ''frequency'' of sinusoidal modulation
+k = 10.0  # ''frequency'' of sinusoidal modulation
 psi_init = np.exp(-x**2/(2*sigma**2)) * np.sin(k * x)
 psi_init /= np.linalg.norm(psi_init)
-psi = psi_init.copy()
+psi = psi_init.copy() #now psi is a 1D array, with the same shape as x
 
 #Analytical ground state
 psi_analytical = (m*omega/np.pi/hbar)**0.25 * np.exp(-m*omega*x**2/(2*hbar))
@@ -36,7 +35,7 @@ psi_analytical /= np.linalg.norm(psi_analytical)
 
 #Animation parameters
 dtau = 0.0005
-total_steps = 800000
+total_steps = 80000
 frames = 400     # Total frames in the animation
 steps_per_frame = total_steps // frames
 
@@ -44,13 +43,13 @@ steps_per_frame = total_steps // frames
 wave_evolution = []
 energies = []
 
-psi_temp = psi_init.copy()
+#Iteration loop for imaginary time evolution
 for i in range(frames):
-    for _ in range(steps_per_frame):
-        psi_temp -= dtau / hbar * H.dot(psi_temp)
-        psi_temp /= np.linalg.norm(psi_temp)
-    wave_evolution.append(psi_temp.copy())
-    energy = np.dot(psi_temp, H.dot(psi_temp))
+    for j in range(steps_per_frame):
+        psi -= dtau / hbar * H.dot(psi) #H.dot(psi) is the matrix multiplication: matrix H times matrix psi
+        psi /= np.linalg.norm(psi)
+    wave_evolution.append(psi.copy()) # Store the wave function at this frame #.copy is to make sure keep adding new arrays to the list
+    energy = np.dot(psi, H.dot(psi)) #dot product and matrix multiplication: psi transposed times (H times psi)
     energies.append(energy)
 
 #Set up animation plot
@@ -67,15 +66,10 @@ line_init, = ax.plot([], [], '-.g', lw=2, label="Initial Wave Function")
 line_analytical, = ax.plot([], [], '--r', lw=2, label="Analytical Ground State")
 ax.legend(loc=1, fontsize=12)
 
-#Add "MatterWaveX.Com" text at the lower right (location 4)
-ax.text(0.98, 0.04, "MatterWaveX.Com", fontsize=13, color="gray",
-        ha='right', va='bottom', transform=ax.transAxes, alpha=0.7)
-
 def init():
     line_num.set_data([], [])
     line_init.set_data(x, psi_init)
     line_analytical.set_data(x, psi_analytical)
-    ax.set_title('')  # Clear the title at init
     return line_num, line_init, line_analytical
 
 def animate(i):
