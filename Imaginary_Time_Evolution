@@ -9,7 +9,7 @@ m = 1.0
 omega = 1.0
 
 #Spatial grid and harmonic oscillator potential
-N_points = 5000
+N_points = 500
 x_min, x_max = -7.0, 7.0
 x = np.linspace(x_min, x_max, N_points)
 dx = x[1] - x[0]
