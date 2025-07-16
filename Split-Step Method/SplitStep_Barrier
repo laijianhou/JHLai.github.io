@@ -73,7 +73,7 @@ class Schrodinger(object):
         self.psi_x_line = None
         self.psi_k_line = None
         self.V_x_line = None
-
+##################################################################################################################################################################################
     def _set_psi_x(self, psi_x):
         self.psi_mod_x = (psi_x * np.exp(-1j * self.k[0] * self.x)
                           * self.dx / np.sqrt(2 * np.pi))
