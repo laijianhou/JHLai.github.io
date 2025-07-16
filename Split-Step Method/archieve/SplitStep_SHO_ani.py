@@ -82,4 +82,4 @@ ani = animation.FuncAnimation(fig, animate, frames=len(data), interval=10)
 
 
 plt.show()
-ani.save("SplitStep_SHO.mp4", writer="ffmpeg", fps=30)
+ani.save("Split-Step Method/archieve/SplitStep_SHO.mp4", writer="ffmpeg", fps=30)

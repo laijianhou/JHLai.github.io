@@ -1,0 +1,117 @@
+from math import pi, sqrt
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+
+class Param:
+    def __init__(self, xmax: float, res: int, dt: float, timesteps: int, im_time: bool) -> None:
+        self.xmax = xmax
+        self.res = res
+        self.dt = dt
+        self.timesteps = timesteps
+        self.im_time = im_time
+
+        self.dx = 2 * xmax / res
+        self.x = np.arange(-xmax + xmax / res, xmax, self.dx)
+        self.dk = pi / xmax
+        self.k = np.concatenate((np.arange(0, res / 2), np.arange(-res / 2, 0))) * self.dk
+
+
+class Operators:
+    def __init__(self, res: int) -> None:
+        self.V = np.empty(res, dtype=complex)
+        self.R = np.empty(res, dtype=complex)
+        self.K = np.empty(res, dtype=complex)
+        self.wfc = np.empty(res, dtype=complex)
+
+
+def init(par: Param, voffset: float, wfcoffset: float) -> Operators:
+    opr = Operators(len(par.x))
+    opr.V = 0.5 * (par.x - voffset) ** 2
+    opr.wfc = np.exp(-((par.x - wfcoffset) ** 2) / 2, dtype=complex)
+    if par.im_time:
+        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt)
+        opr.R = np.exp(-0.5 * opr.V * par.dt)
+    else:
+        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt * 1j)
+        opr.R = np.exp(-0.5 * opr.V * par.dt * 1j)
+    return opr
+
+
+def split_op(par: Param, opr: Operators, store_every: int = 1):
+    frames = []
+
+    for i in range(par.timesteps):
+        opr.wfc *= opr.R
+        opr.wfc = np.fft.fft(opr.wfc)
+        opr.wfc *= opr.K
+        opr.wfc = np.fft.ifft(opr.wfc)
+        opr.wfc *= opr.R
+
+        density = np.abs(opr.wfc) ** 2
+
+        if par.im_time:
+            renorm_factor = sum(density) * par.dx
+            opr.wfc /= sqrt(renorm_factor)
+
+        if i % store_every == 0:
+            frames.append(density.copy())
+
+    return frames
+
+
+def calculate_energy(par: Param, opr: Operators) -> float:
+    wfc_r = opr.wfc
+    wfc_k = np.fft.fft(wfc_r)
+    wfc_c = np.conj(wfc_r)
+    energy_k = 0.5 * wfc_c * np.fft.ifft((par.k ** 2) * wfc_k)
+    energy_r = wfc_c * opr.V * wfc_r
+    energy_final = sum(energy_k + energy_r).real
+    return energy_final * par.dx
+
+
+def animate_density(par: Param, frames, potential):
+    fig, ax = plt.subplots()
+
+    # Plot wavefunction density
+    density_line, = ax.plot([], [], lw=2, label="|ψ(x)|²")
+
+    # Plot potential scaled to match max density
+    V_scaled = potential.real / np.max(potential.real) * np.max(frames[0])
+    potential_line, = ax.plot(par.x, V_scaled, 'r--', label="V(x) (rescaled)")
+
+    ax.set_xlim(par.x[0], par.x[-1])
+    ax.set_ylim(0, np.max(frames[0]) * 1.2)
+    ax.set_xlabel("x")
+    ax.set_ylabel("Density |ψ(x)|²")
+    ax.set_title("Imaginary Time Evolution")
+    ax.legend()
+
+    def init_anim():
+        density_line.set_data([], [])
+        return density_line, potential_line
+
+    def update(frame):
+        density_line.set_data(par.x, frame)
+        return density_line, potential_line
+
+    ani = FuncAnimation(fig, update, frames=frames, init_func=init_anim,
+                        blit=True, interval=50)
+
+    ani.save("Split-Step Method/SplitStep_SHO.mp4", writer="ffmpeg", fps=30)
+
+
+def main():
+    par = Param(xmax=5.0, res=256, dt=0.05, timesteps=1000, im_time=False)
+    opr = init(par, voffset=0.0, wfcoffset=-2)
+
+    frames = split_op(par, opr, store_every=1)
+    energy = calculate_energy(par, opr)
+    print("Final energy: ", energy)
+
+    animate_density(par, frames, opr.V)
+
+
+if __name__ == "__main__":
+    main()

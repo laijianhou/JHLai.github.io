@@ -27,7 +27,7 @@ class Schrodinger(object):
               k0 < k < 2*pi / dx
             where dx = x[1]-x[0].  If you expect nonzero momentum outside this
             range, you must modify the inputs accordingly.  If not specified,
-            k0 will be calculated such that the range is [-k0,k0]
+            k0 will be calculated such that the range is [-k0,k0]. 
         hbar : float
             value of planck's constant (default = 1)
         m : float
@@ -36,9 +36,9 @@ class Schrodinger(object):
             initial tile (default = 0)
         """
         # Validation of array inputs
-        self.x, psi_x0, self.V_x = map(np.asarray, (x, psi_x0, V_x))
-        N = self.x.size
-        assert self.x.shape == (N,)
+        self.x, psi_x0, self.V_x = map(np.asarray, (x, psi_x0, V_x)) #note that itsn't self.psi_x0, but psi_x0 becase we will modify it later, not store it
+        N = self.x.size #.size for numpy arrays, can be 1D, 2D, etc.
+        assert self.x.shape == (N,) # to check that x has length N, if not, raise an error
         assert psi_x0.shape == (N,)
         assert self.V_x.shape == (N,)
 
@@ -52,14 +52,17 @@ class Schrodinger(object):
         self.dk = 2 * np.pi / (self.N * self.dx)
 
         # set momentum scale
-        if k0 == None:
+        if k0 == None: # == is used to check if k0 is None, not =, because = is used for assignment
             self.k0 = -0.5 * self.N * self.dk
         else:
             self.k0 = k0
-        self.k = self.k0 + self.dk * np.arange(self.N)
+        self.k = self.k0 + self.dk * np.arange(self.N) # np.arrange(N) gives an array of integers from 0 to N-1
+        # so k = k0 + dk * [0, 1, 2, ..., N-1] gives the momentum wave numbers
+        # If k0 is not specified, it will be set to -0.5 * N * dk, which means the range of k will be [-k0, k0-dk]
+        # If k0 is specified, it will be set to that value, and the range of k will be [k0, k0 + (N-1) * dk]
 
-        self.psi_x = psi_x0
-        self.compute_k_from_x()
+        self.psi_x = psi_x0 # that's why we don't use self.psi_x0, because psi_x0 will becomes self.psi_x later
+        self.compute_k_from_x() 
 
         # variables which hold steps in evolution of the
         self.x_evolve_half = None
@@ -143,6 +146,21 @@ class Schrodinger(object):
         self.compute_k_from_x()
 
         self.t += dt * Nsteps
+
+    def total_probability(self):
+        return np.sum(np.abs(self.psi_x)**2) * self.dx
+
+    def total_energy(self):
+        kinetic_energy = np.sum(
+            np.abs(self.psi_k)**2 * (self.hbar**2 * self.k**2) / (2 * self.m)
+        ) * self.dk
+
+        potential_energy = np.sum(
+            np.abs(self.psi_x)**2 * self.V_x
+                ) * self.dx
+
+        return kinetic_energy + potential_energy
+
 
 
 ######################################################################
@@ -278,13 +296,20 @@ def init():
 
 def animate(i):
     S.time_step(dt, N_steps)
+
+    # Plot update
     psi_x_line.set_data(S.x, 4 * abs(S.psi_x))
     V_x_line.set_data(S.x, S.V_x)
     center_line.set_data(2 * [x0 + S.t * p0 / m], [0, 1])
-
     psi_k_line.set_data(S.k, abs(S.psi_k))
-    title.set_text("t = %.2f" % S.t)
+
+    # Calculate observables
+    prob = S.total_probability()
+    energy = S.total_energy()
+
+    title.set_text("t = %.2f, P = %.5f, E = %.5f" % (S.t, prob, energy))
     return (psi_x_line, V_x_line, center_line, psi_k_line, title)
+
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 anim = animation.FuncAnimation(fig, animate, init_func=init,
@@ -294,6 +319,6 @@ anim = animation.FuncAnimation(fig, animate, init_func=init,
 # uncomment the following line to save the video in mp4 format.  This
 # requires either mencoder or ffmpeg to be installed on your system
 
-anim.save('SplitStep_Barrier.mp4', fps=15, extra_args=['-vcodec', 'libx264'])
+anim.save('Split-Step Method/SplitStep_Barrier.mp4', fps=15, extra_args=['-vcodec', 'libx264'])
 
 pl.show()
