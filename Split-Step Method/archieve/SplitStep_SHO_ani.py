@@ -10,7 +10,7 @@ g = 0            # No Interaction strength
 dt = 0.01           # Time step
 t_max = 100         # Maximum time for simulation
 L = 20.0            # x size
-N = 1000            # Number of grid points
+N = 500           # Number of grid points
 dx = L / N
 x = np.linspace(-L/2, L/2, N, endpoint=False) #Not including the last point to avoid overlap in the np.fft
 
@@ -31,7 +31,7 @@ k = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=dx))
 
 # Evolution operators
 def kinetic(dt):
-    return np.exp((1j* hbar * k**2 * dt) / (2 * m))
+    return np.exp((-1j* hbar * k**2 * dt) / (2 * m))
 
 def nonlinear(psi_x, dt):
     return np.exp(-1j * (dt / hbar) * (V_x + g * np.abs(psi_x)**2))

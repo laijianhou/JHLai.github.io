@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
+#here we assumed hbar = 1, m = 1
+
 
 # Class to hold parameters for the simulation
 class Param:
@@ -27,31 +29,31 @@ class Param:
 class Operators:
     def __init__(self, res: int) -> None:
         self.V = np.empty(res, dtype=complex) # V is the potential operator
-        self.R = np.empty(res, dtype=complex) # 
-        self.K = np.empty(res, dtype=complex) # K is the kinetic operator
+        self.R = np.empty(res, dtype=complex) # R is the ``potential" operator for split step method
+        self.K = np.empty(res, dtype=complex) # K is the kinetic operator for split step method
         self.psi = np.empty(res, dtype=complex) # psi is the wavefunction operator
 
 
 # Function to initialize operators based on parameters
-def init(par: Param, voffset: float, psi_offset: float): # -> Operators indicates that this function returns an Operators object
-    opr = Operators(len(par.x))
-    opr.V = 0.5 * (par.x - voffset) ** 2
-    opr.psi = np.exp(-((par.x - psi_offset) ** 2) / 2, dtype=complex)
-    if par.im_time:
-        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt)
-        opr.R = np.exp(-0.5 * opr.V * par.dt)
-    else:
-        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt * 1j)
-        opr.R = np.exp(-0.5 * opr.V * par.dt * 1j)
+def init(par: Param, voffset: float, psi_offset: float): # -> Operators indicates that this function returns an Operators object 
+    opr = Operators(len(par.x)) # Insert the length of x (from Param) to initialize Operators
+    opr.V = 0.5 * (par.x - voffset) ** 2 # Potential for the harmonic oscillator
+    opr.psi = np.exp(-((par.x - psi_offset) ** 2) / 2, dtype=complex) # Initial wavefunction, Gaussian centered at psi_offset
+    if par.im_time: # When it's true, we are doing imaginary time evolution
+        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt) # Iminary time evolution kinetic operator (full step)
+        opr.R = np.exp(-0.5 * opr.V * par.dt) # Imaginary time evolution potential operator (half step)
+    else: # When it's false, we are doing real time evolution
+        opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt * 1j) # Kinetic operator for real time evolution (full step)
+        opr.R = np.exp(-0.5 * opr.V * par.dt * 1j) # Potential operator for real time evolution (half step)
     return opr
 
 
 # Function to perform the split-step method
-def split_op(par: Param, opr: Operators, store_every: int = 1):
+def split_op(par: Param, opr: Operators, store_every: int = 1): # this function returns a list of numpy arrays # store_every is the frequency of storing frames
     frames = []
 
     for i in range(par.timesteps):
-        opr.psi *= opr.R
+        opr.psi *= opr.R 
         opr.psi = np.fft.fft(opr.psi)
         opr.psi *= opr.K
         opr.psi = np.fft.ifft(opr.psi)
@@ -63,7 +65,7 @@ def split_op(par: Param, opr: Operators, store_every: int = 1):
             renorm_factor = sum(density) * par.dx
             opr.psi /= sqrt(renorm_factor)
 
-        if i % store_every == 0:
+        if i % store_every == 0: #If the current step is a multiple of store_every, store the frame
             frames.append(density.copy())
 
     return frames
@@ -71,13 +73,13 @@ def split_op(par: Param, opr: Operators, store_every: int = 1):
     
 # Function to calculate the energy of the system
 def calculate_energy(par: Param, opr: Operators) -> float:
-    psi_r = opr.psi
-    psi_k = np.fft.fft(psi_r)
-    psi_c = np.conj(psi_r)
+    psi_r = opr.psi # Real space wavefunction
+    psi_k = np.fft.fft(psi_r) # Fourier transform to momentum space
+    psi_c = np.conj(psi_r) # Complex conjugate of the real space wavefunction
     energy_k = 0.5 * psi_c * np.fft.ifft((par.k ** 2) * psi_k)
     energy_r = psi_c * opr.V * psi_r
-    energy_final = sum(energy_k + energy_r).real
-    return energy_final * par.dx
+    energy_final = sum(energy_k + energy_r).real # .real ensures we only take the real part of the energy, as it should be real-valued
+    return energy_final * par.dx # Multiply by dx to account for the discretization of space
 
 
 # Function to animate the wavefunction density over time
