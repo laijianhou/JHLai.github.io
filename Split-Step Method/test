@@ -1,9 +1,12 @@
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.animation import FuncAnimation
 from math import pi, sqrt
-from numpy.fft import fft, ifft
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
-class SplitStepMethod:
-    def __init__(self, x.
-        
+class Parameter:
+  def __init__(self, xmax: float, resol: int, dt: float, timesteps: int, im_time: bool):
+    self.xmax = xmax
+    self.resl = resol
+    self.dt = dt
+    self.timesteps = timesteps
+    self.im_time = im_time

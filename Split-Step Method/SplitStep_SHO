@@ -4,32 +4,39 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 
+# Class to hold parameters for the simulation
 class Param:
-    def __init__(self, xmax: float, res: int, dt: float, timesteps: int, im_time: bool) -> None:
-        self.xmax = xmax
-        self.res = res
-        self.dt = dt
-        self.timesteps = timesteps
-        self.im_time = im_time
+    def __init__(self, xmax: float, res: int, dt: float, timesteps: int, im_time: bool) -> None: # -> None indicates no return value
+        self.xmax = xmax # Maximum x value
+        self.res = res # Resolution (number of points)
+        self.dt = dt # Time step size
+        self.timesteps = timesteps # Total number of time steps
+        self.im_time = im_time # Whether to use imaginary time evolution
 
         self.dx = 2 * xmax / res
-        self.x = np.arange(-xmax + xmax / res, xmax, self.dx)
-        self.dk = pi / xmax
+        self.x = np.arange(-xmax + (xmax / res), xmax, self.dx) # This creates an array of x values from -xmax to xmax with the specified resolution, [- xmax + xmax / res, xmax - xmax / res]
+        self.dk = pi / xmax # dk = 2pi/ 2 xmax
         self.k = np.concatenate((np.arange(0, res / 2), np.arange(-res / 2, 0))) * self.dk
+        # concatenate means connexting two arrays, here it creates a k array that contains positive frequencies followed by negative frequencies
+        # now k = [0, 1, 2, ..., res/2 - 1, -res/2, -res/2 + 1, ..., -1], note that the res need to be even for this to work properly
+        # The arrangement of array is because the FFT function assumes that the input is periodic, so it needs to have the positive frequencies first, then the negative frequencies
+        # this is a common convention in np.fft
 
 
+# Class to hold operators used
 class Operators:
     def __init__(self, res: int) -> None:
-        self.V = np.empty(res, dtype=complex)
-        self.R = np.empty(res, dtype=complex)
-        self.K = np.empty(res, dtype=complex)
-        self.wfc = np.empty(res, dtype=complex)
+        self.V = np.empty(res, dtype=complex) # V is the potential operator
+        self.R = np.empty(res, dtype=complex) # 
+        self.K = np.empty(res, dtype=complex) # K is the kinetic operator
+        self.psi = np.empty(res, dtype=complex) # psi is the wavefunction operator
 
 
-def init(par: Param, voffset: float, wfcoffset: float) -> Operators:
+# Function to initialize operators based on parameters
+def init(par: Param, voffset: float, psi_offset: float): # -> Operators indicates that this function returns an Operators object
     opr = Operators(len(par.x))
     opr.V = 0.5 * (par.x - voffset) ** 2
-    opr.wfc = np.exp(-((par.x - wfcoffset) ** 2) / 2, dtype=complex)
+    opr.psi = np.exp(-((par.x - psi_offset) ** 2) / 2, dtype=complex)
     if par.im_time:
         opr.K = np.exp(-0.5 * (par.k ** 2) * par.dt)
         opr.R = np.exp(-0.5 * opr.V * par.dt)
@@ -39,38 +46,41 @@ def init(par: Param, voffset: float, wfcoffset: float) -> Operators:
     return opr
 
 
+# Function to perform the split-step method
 def split_op(par: Param, opr: Operators, store_every: int = 1):
     frames = []
 
     for i in range(par.timesteps):
-        opr.wfc *= opr.R
-        opr.wfc = np.fft.fft(opr.wfc)
-        opr.wfc *= opr.K
-        opr.wfc = np.fft.ifft(opr.wfc)
-        opr.wfc *= opr.R
+        opr.psi *= opr.R
+        opr.psi = np.fft.fft(opr.psi)
+        opr.psi *= opr.K
+        opr.psi = np.fft.ifft(opr.psi)
+        opr.psi *= opr.R
 
-        density = np.abs(opr.wfc) ** 2
+        density = np.abs(opr.psi) ** 2
 
         if par.im_time:
             renorm_factor = sum(density) * par.dx
-            opr.wfc /= sqrt(renorm_factor)
+            opr.psi /= sqrt(renorm_factor)
 
         if i % store_every == 0:
             frames.append(density.copy())
 
     return frames
 
-
+    
+# Function to calculate the energy of the system
 def calculate_energy(par: Param, opr: Operators) -> float:
-    wfc_r = opr.wfc
-    wfc_k = np.fft.fft(wfc_r)
-    wfc_c = np.conj(wfc_r)
-    energy_k = 0.5 * wfc_c * np.fft.ifft((par.k ** 2) * wfc_k)
-    energy_r = wfc_c * opr.V * wfc_r
+    psi_r = opr.psi
+    psi_k = np.fft.fft(psi_r)
+    psi_c = np.conj(psi_r)
+    energy_k = 0.5 * psi_c * np.fft.ifft((par.k ** 2) * psi_k)
+    energy_r = psi_c * opr.V * psi_r
     energy_final = sum(energy_k + energy_r).real
     return energy_final * par.dx
 
 
+# Function to animate the wavefunction density over time
 def animate_density(par: Param, frames, potential):
     fig, ax = plt.subplots()
 
@@ -102,9 +112,10 @@ def animate_density(par: Param, frames, potential):
     ani.save("Split-Step Method/SplitStep_SHO.mp4", writer="ffmpeg", fps=30)
 
 
+# Main function to run the simulation
 def main():
     par = Param(xmax=5.0, res=256, dt=0.05, timesteps=1000, im_time=False)
-    opr = init(par, voffset=0.0, wfcoffset=-2)
+    opr = init(par, voffset=0.0, psi_offset=-2)
 
     frames = split_op(par, opr, store_every=1)
     energy = calculate_energy(par, opr)
@@ -113,5 +124,6 @@ def main():
     animate_density(par, frames, opr.V)
 
 
+# Entry point for the script
 if __name__ == "__main__":
     main()
